@@ -186,19 +186,22 @@ So a CPU-only box is enough to run coding agents, provided you keep them headles
 streamed desktop, `spectask screenshot`, `spectask stream` and the desktop MCP tools; the agent
 itself, its repo, its shell and the whole spec-task workflow are unaffected.
 
-**Current caveat — a CPU-only sandbox host is scheduled as if it can host nothing.** The node
-reports `gpu_vendor: "none"` and `render_node: "SOFTWARE"` in its heartbeat, and
-`SandboxInstance.CanHostSandbox()` excludes both, so the placement logic skips it for *headless*
-work too. Symptom: the node shows `status: online` in `helix api /sandboxes` while every sandbox
-and spec task fails to place. The exclusion was written to keep sandboxes off inference-only
-Neuron/inf2 hosts and catches CPU-only hosts as collateral. Until that is split, a sandbox node
-needs a render node even for headless workloads.
-
-Check what a node reports:
+Check what a node reports, and what the deployment can therefore run:
 
 ```bash
 helix api /sandboxes | jq -r '.[] | "\(.id) gpu=\(.gpu_vendor) render=\(.render_node) status=\(.status)"'
+helix sandbox runtimes          # marks desktop runtimes unavailable when no host can stream
 ```
+
+On a deployment with no render-capable host, `helix sandbox runtimes` says so, and asking for a
+desktop runtime — via `helix sandbox create --runtime ubuntu-desktop` or a spec task pinned with
+`--runtime ubuntu-desktop` — is rejected immediately rather than failing at placement.
+
+> **Version note.** Headless-without-a-GPU is helixml/helix#3035. On binaries before it, a
+> CPU-only node reporting `gpu_vendor: "none"` / `render_node: "SOFTWARE"` is skipped by
+> placement for *headless* work too, because one predicate gated both. The symptom is a node
+> that shows `status: online` while nothing ever lands on it and every sandbox fails to place.
+> On those versions a sandbox node needs a render node even for headless workloads.
 
 `install.sh --code` is documented as requiring a GPU, and the sandbox installer prints
 `Warning: No GPU detected. Sandbox may not work correctly.` before setting `GPU_VENDOR=none`.
@@ -457,7 +460,8 @@ consistent.
 | Login redirects somewhere broken | `SERVER_URL` / `KEYCLOAK_FRONTEND_URL` don't match how you reach it. |
 | `401` on every CLI call | Runner token instead of a user `hl-` key. |
 | **Spec task never gets a sandbox** | No sandbox node. `helix api /sandboxes` — empty means none registered. |
-| Node `online` but nothing ever places on it | Check `gpu_vendor` / `render_node` — `none`/`SOFTWARE` is currently excluded from placement even for headless work. |
+| Node `online` but nothing ever places on it | Check `gpu_vendor` / `render_node`. Before #3035, `none`/`SOFTWARE` was excluded from placement even for headless work. |
+| `no sandbox host with a display/render node` | Working as intended on a CPU-only fleet — use a headless runtime, or add a host with a GPU. |
 | Node registered but `status` not `online` | Heartbeat stopped; check `docker logs helix-sandbox`. |
 | Node never appears | `RUNNER_TOKEN` mismatch, or it can't reach `HELIX_API_URL`. |
 | `sandbox create` hangs then fails | Nested dockerd not up. `docker exec helix-sandbox docker info`. |
