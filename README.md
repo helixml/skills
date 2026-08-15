@@ -1,9 +1,25 @@
+<div align="center">
+<img alt="logo" src="https://helix.ml/assets/helix-logo.png" width="250px">
+
+<br/>
+<br/>
+
+</div>
+
+<p align="center">
+  <a href="https://app.helix.ml/">SaaS</a> •
+  <a href="https://helix.ml/docs">Docs</a> •
+  <a href="https://discord.gg/VJftd844GE">Discord</a>
+</p>
+
 # Helix agent skills
 
 Agent skills for [Helix](https://github.com/helixml/helix) — a private agent fleet with
 spec-driven coding. They teach a coding agent how to drive a Helix control plane from the
 `helix` CLI: manage the Kanban board, dispatch and steer spec tasks, upload files and build
 knowledge bases, configure agents, and install or debug a deployment.
+
+![Helix](static/helix.png)
 
 ## Install
 
