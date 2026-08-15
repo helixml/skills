@@ -13,7 +13,7 @@ Read [helix-cli](../helix-cli/SKILL.md) for auth and [helix-board](../helix-boar
 creating and moving the cards themselves. This skill is about the *running* task.
 
 > **Version note.** Addressing a task by its `spt_…` id in `send`/`interact` (instead of looking
-> up its session id) landed in helixml/helix#3033. On older binaries resolve it first:
+> up its session id) landed in helixml/helix#3033 — merged to main, shipping in the first release after 2.12.3. On older binaries resolve it first:
 > `SES=$(helix api /spec-tasks/spt_01xxx | jq -r .planning_session_id)`.
 
 ## Identifiers

@@ -44,9 +44,9 @@ helix spectask start --project prj_01xxx --agent app_01yyy \
 
 The board and task-lifecycle commands (`helix spectask board|get|create|update|move|label|
 attach|attachments|approve|archive|delete|progress`, and addressing a task by `spt_…` in
-`send`/`interact`) come from [helixml/helix#3033](https://github.com/helixml/helix/pull/3033).
-Every skill that uses them also gives the `helix api` equivalent, so the guidance holds on older
-binaries too.
+`send`/`interact`) come from [helixml/helix#3033](https://github.com/helixml/helix/pull/3033),
+which is merged to `main` and ships in the first release after 2.12.3. Every skill that uses
+them also gives the `helix api` equivalent, so the guidance holds on older binaries too.
 
 ## Contributing
 

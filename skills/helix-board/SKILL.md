@@ -15,7 +15,7 @@ it, chat with it, exec in its sandbox — see [helix-spec-tasks](../helix-spec-t
 
 > **Version note.** The board/task-management verbs (`board`, `get`, `create`, `update`, `move`,
 > `label`, `attach`, `attachments`, `approve`, `archive`, `delete`, `progress`) landed in
-> helixml/helix#3033. On an older binary, use the `helix api` equivalents given inline below —
+> helixml/helix#3033 (merged to main; ships in the first release after 2.12.3). On an older binary, use the `helix api` equivalents given inline below —
 > the REST endpoints have been there all along. `helix project` and `helix spectask start` work
 > on every version.
 

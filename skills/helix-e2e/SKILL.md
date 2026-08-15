@@ -12,7 +12,7 @@ clean reproduction.
 Prerequisites: a running control plane ([helix-deploy](../helix-deploy/SKILL.md)), a `helix`
 binary, and a user API key ([helix-cli](../helix-cli/SKILL.md)).
 
-> Steps 4–9 use the board commands from helixml/helix#3033. On an older binary, substitute the
+> Steps 4–9 use the board commands from helixml/helix#3033 (merged to main; ships in the first release after 2.12.3). On an older binary, substitute the
 > `helix api` equivalents listed in [helix-board](../helix-board/SKILL.md), or run the built-in
 > `helix spectask e2e` (step 10), which works on every version.
 

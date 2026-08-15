@@ -119,7 +119,7 @@ WebP, SVG, PDF, plain text, Markdown, or CSV. A `.log` file uploads fine as `tex
 For a long brief, prefer `--prompt-file ./brief.md` over an attachment: it goes straight into the
 prompt, so the agent reads it without having to be told to.
 
-> `helix spectask attach` / `attachments` landed in helixml/helix#3033. On older binaries the
+> `helix spectask attach` / `attachments` landed in helixml/helix#3033 — merged to main, shipping in the first release after 2.12.3. On older binaries the
 > `--attach` flag on `start` works, and you can POST multipart to
 > `/api/v1/spec-tasks/<id>/attachments` directly.
 
