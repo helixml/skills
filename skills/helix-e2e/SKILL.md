@@ -132,14 +132,19 @@ expected, not a failure.
 
 ```bash
 for i in $(seq 1 60); do
-  state=$(helix spectask get "$TASK" --json | jq -r '.sandbox_state // "absent"')
-  status=$(helix spectask get "$TASK" --json | jq -r .status)
-  echo "[$i] status=$status sandbox=$state"
-  [ "$state" = "running" ] && break
+  row=$(helix spectask board --project "$PROJECT" --json \
+        | jq -r --arg t "$TASK" '.[] | select(.id==$t) | "\(.status) \(.sandbox_state // "absent")"')
+  echo "[$i] $row"
+  [ "${row##* }" = "running" ] && break
   sleep 10
 done
 export SESSION=$(helix spectask get "$TASK" --json | jq -r .planning_session_id)
 ```
+
+**Poll the board, not `get`.** `sandbox_state` is computed by the list endpoint only — on a
+single-task fetch it comes back `null` no matter what the container is doing, so a loop written
+around `helix spectask get … | jq .sandbox_state` never terminates. `status` and
+`planning_session_id` are correct on both.
 
 Ten minutes is a reasonable ceiling on a cold host (image pull). A desktop runtime should also
 answer a screenshot once it's up:

@@ -121,6 +121,11 @@ helix spectask get spt_01xxx            # --json for the full record
 helix spectask progress spt_01xxx       # spec + implementation phase timings
 ```
 
+One asymmetry to know about: `sandbox_state` (and `queue_reason`'s sandbox context) is computed
+by the **list** endpoint, so it is populated in `board` output but comes back `null` from `get`.
+Poll the board when you're waiting for a sandbox to come up; `get` is right about everything
+else.
+
 ### Columns and statuses
 
 The board collapses several statuses into one column. This mapping is what both the web board
