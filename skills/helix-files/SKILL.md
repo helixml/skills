@@ -97,8 +97,21 @@ belong to more than one org.
 ## Spec task attachments
 
 Attachments are how you give one task's agent bulky context — a failing CI log, a screenshot of
-the bug, a design doc — without pasting it into the prompt. The agent reads them inside its
-sandbox at `design/tasks/<task>/attachments/<name>`.
+the bug, a design doc — without pasting it into the prompt.
+
+They are committed onto the task's `helix-specs` branch when spec generation starts, and the
+agent reads them inside its sandbox at:
+
+```
+~/work/helix-specs/design/tasks/<NNNNNN>_<slug>/attachments/<name>
+```
+
+The directory is the task **number** and a slug of its name (e.g. `000042_add-dark-mode`),
+not the `spt_…` id — so tell the agent to `ls ~/work/helix-specs/design/tasks/` rather than
+hard-coding a path. `requirements.md`, `design.md` and `tasks.md` land alongside `attachments/`.
+
+Give each file a **distinct name**: they all land in one flat directory, so uploading seven files
+called `SKILL.md` collides. Rename before uploading.
 
 ```bash
 # at creation

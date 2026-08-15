@@ -69,7 +69,9 @@ Behaviour worth knowing:
 - `--prompt-file` is appended after `--prompt` when both are given. Use it for design docs and
   briefs — nothing needs to be committed.
 - `--attach` uploads files as task attachments; the agent reads them inside the sandbox at
-  `design/tasks/<task>/attachments/<name>`. Put logs and large context there, not in the prompt.
+  `~/work/helix-specs/design/tasks/<NNNNNN>_<slug>/attachments/`. Put logs and large context
+  there rather than in the prompt, and give each file a distinct name — they land in one flat
+  directory, so seven files called `SKILL.md` collide.
 - `--runtime` is fixed for the life of the task. `ubuntu-desktop` (default) gives a streamable
   GNOME desktop with screenshots; `headless-ubuntu` is agent-only.
 - `-q` prints only the task id (or the session id with `--wait`) — use it in scripts.
