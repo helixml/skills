@@ -279,7 +279,9 @@ without `--org` gives a misleading `404 sandbox not found` rather than an authz 
 
 Read the outcomes as three cases, not two:
 
-- **Step 1 empty** (`[]`, exit 0 — the exit code is 0 either way, so don't test `$?`): no node
+- **Step 1 empty** (literal `[]`, exit 0 — it exits 0 whether or not a node exists, so
+  `if helix api /sandboxes; then` always passes; test the payload, e.g.
+  `[ "$(helix api /sandboxes | jq 'length')" -gt 0 ]`): no node
   registered. Check `RUNNER_TOKEN` and the node's logs for `RevDial control connection
   established`. Also just wait: a fresh node pre-pulls the multi-GB desktop image before hydra
   starts, which took ~10 minutes in one measured run, and the pod reads `READY 1/1` throughout
@@ -323,12 +325,25 @@ helm repo update
 curl -o values.yaml \
   https://raw.githubusercontent.com/helixml/helix/main/charts/helix-controlplane/values-example.yaml
 # set global.serverUrl, ingress, storageClass, postgresql
+# AND replace controlplane.runnerToken — see the warning below
 
 helm upgrade --install helix helix/helix-controlplane -f values.yaml \
   --set image.tag=$(curl -s https://get.helixml.tech/latest.txt)
 
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=helix-controlplane --timeout=300s
 ```
+
+> **Replace the runner token before you deploy.** `values-example.yaml` ships
+> `controlplane.runnerToken: "your-secure-runner-token-here"`, and applying it verbatim gives you
+> a cluster whose runner/sandbox join secret is a publicly known string. This is the Helm
+> equivalent of `oh-hallo-insecure-token`, and it is easy to miss because the file's own comment
+> reads like a placeholder you might get away with. Generate one:
+> `--set controlplane.runnerToken="$(openssl rand -hex 32)"`, or better, point
+> `controlplane.runnerTokenExistingSecret` at a Kubernetes secret. Verify afterwards with
+> `kubectl exec deploy/<release>-helix-controlplane -- printenv RUNNER_TOKEN`.
+
+That label selector covers the whole stack, and 300s is enough in practice — a measured cold
+install had all five pods ready in 2m11s.
 
 External Postgres:
 
