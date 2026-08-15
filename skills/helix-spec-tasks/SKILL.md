@@ -121,8 +121,11 @@ These take a **session** id. Get it with `helix spectask get spt_01xxx --json | 
 helix spectask list                     # active sessions with external agents
 helix spectask screenshot ses_01xxx     # also the quickest RevDial connectivity check
 helix spectask live ses_01xxx           # stream stats + recent activity + send commands
-helix spectask health                   # system + container status
+helix spectask health                   # API health, active agent sessions, MCP endpoint
 ```
+
+`spectask health` does **not** check the sandbox hosts. If tasks aren't getting sandboxes at all,
+that's `helix api /sandboxes` — see [helix-deploy](../helix-deploy/SKILL.md).
 
 `spectask screenshot` writes `screenshot-<timestamp>.jpg` into the current directory and prints
 the filename — it does not write to stdout, so don't redirect it. (`helix sandbox screenshot`
@@ -178,6 +181,7 @@ agent. Good for one-off compute, reproducing a build, or scripted environments.
 ```bash
 helix sandbox runtimes                                  # what the server offers
 helix sandbox create --runtime headless-ubuntu --size medium --ttl 1800 --name scratch
+# also the cheapest end-to-end proof that the Hydra container runner is healthy
 # small=1CPU/2GB, medium=4CPU/8GB, large=8CPU/16GB; --ttl seconds (default 600)
 # --persistent mounts a workspace volume that survives restarts
 # --project prj_01xxx associates it with a project
@@ -201,6 +205,14 @@ helix sandbox delete sbx_01xxx
 
 Sandboxes expire at their TTL. Set one long enough for the job, and delete explicitly when done
 rather than relying on expiry.
+
+The runtime list is deployment config (`HELIX_SANDBOX_RUNTIMES` on the API), not a fixed set —
+`helix sandbox runtimes` is the only reliable answer for a given deployment. `--image` needs
+`HELIX_SANDBOX_ALLOW_CUSTOM_IMAGE=true` on the server and is rejected otherwise.
+
+Each sandbox runs under its own Docker daemon inside the Hydra runner, so containers you start
+inside one are invisible to every other session. See
+[helix-deploy](../helix-deploy/SKILL.md) for what that means operationally.
 
 ## Testing and diagnostics
 

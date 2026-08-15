@@ -93,6 +93,25 @@ export AGENT=app_...
 Only `zed_external` agents can run spec tasks. If the list is empty, the deployment has no coding
 agent configured — add one via the project YAML's `agent:` block (step 2) and re-check.
 
+## 3b. Pre-flight the sandbox runner
+
+Do this before dispatching anything — a missing sandbox node is the single most common reason an
+otherwise healthy deployment never runs a task, and it's much cheaper to catch here than after a
+ten-minute wait in step 5.
+
+```bash
+helix api /sandboxes | jq -r '.[] | "\(.id) \(.status) active=\(.active_sandboxes)/\(.max_sandboxes)"'
+helix sandbox runtimes
+
+# exercises API → RevDial → Hydra → nested dockerd → container
+helix sandbox create --name preflight --runtime headless-ubuntu --ttl 300
+helix sandbox exec sbx_... -- bash -lc "echo hydra ok"
+helix sandbox delete sbx_...
+```
+
+Empty output from the first command means no sandbox node is registered — install one
+(`./install.sh --sandbox`) before continuing. See [helix-deploy](../helix-deploy/SKILL.md).
+
 ## 4. Dispatch a task
 
 Start with a small, self-contained change so the run finishes quickly:
@@ -213,7 +232,7 @@ specifically.
 | 0 | `401` | Runner token instead of a user `hl-` key |
 | 1 | Command hangs listing orgs | Interactive org prompt — export `HELIX_ORG` |
 | 3 | No agents listed | No coding agent in the org; add one via the project YAML |
-| 5 | Sandbox stuck `absent`/`starting` | Sandbox container down or `RUNNER_TOKEN` mismatch — `helix spectask health`, then sandbox logs |
+| 5 | Sandbox stuck `absent`/`starting` | No sandbox/Hydra node, or `RUNNER_TOKEN` mismatch — `helix api /sandboxes` first, then `docker logs helix-sandbox` |
 | 5 | Screenshot 503 | RevDial not connected yet; retry before calling it broken |
 | 6 | Message sent, no reply | Agent never connected. `helix spectask exec` into the container and check the agent process |
 | 8 | Stuck in `spec_review` | Waiting on you — `helix spectask approve` |
