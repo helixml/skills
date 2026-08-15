@@ -125,15 +125,34 @@ What that container gets, and why:
 | `-v sandbox-data:/data` | Session workspaces |
 | `-v /var/run/sandbox:/var/run/sandbox` | Socket the API shares with the node |
 | `--device /dev/uinput --device /dev/uhid` + cgroup rules `c 13:*`, `c 226:*` | Virtual HID and DRI for the streamed desktop |
+| `-v /run/udev:/run/udev:rw` | Device enumeration; the Helm chart mounts it too and the pod won't start without it |
+| `--restart=always` | The node comes back with the host |
+| `SANDBOX_DATA_PATH`, `XDG_RUNTIME_DIR`, `HELIX_FRAME_EXPORT_PORT` | Set by the generated script; rarely changed |
+
+`MAX_SANDBOXES` is what the node is *told*; the capacity the API reports back can differ (a node
+started with `MAX_SANDBOXES=10` reported `"max_sandboxes": 20`). Read the reported value from
+`helix api /sandboxes`, not from your own env.
 
 Host prerequisites the installer handles for you — replicate them if you deploy by hand:
 
 - `uhid` kernel module loaded and persisted in `/etc/modules-load.d/helix.conf` (with `--code`).
+  This is a **host** operation. Running it inside a container fails with
+  `FATAL: Module uhid not found in directory /lib/modules/<kernel>` because there is no
+  `/lib/modules` tree there — load it on the host, then pass the device in.
 - inotify limits raised to `fs.inotify.max_user_watches=1048576`,
   `fs.inotify.max_user_instances=1024` in `/etc/sysctl.d/99-helix-inotify.conf`. Zed burns
-  thousands of watches per instance; the defaults run out after a couple of desktops.
-- `/hydra-data` on a **real filesystem, not an overlay** — Docker's overlay2 cannot mount on top
-  of overlay, so a bind mount into an overlay directory makes every nested dockerd fail to start.
+  thousands of watches per instance; the defaults run out after a couple of desktops. (The
+  sandbox image's own init sets a lower 524288 — the installer's host-level value is the one
+  that matters.)
+- `/hydra-data` on a **real filesystem, not an overlay**. Docker's overlay2 cannot mount on top of
+  overlay — but the failure is silent, not loud: the nested daemon logs
+  `failed to mount overlay: invalid argument`, falls back to the `vfs` storage driver, and then
+  reports `Daemon has completed initialization`. It *starts*. You get a node that looks healthy
+  while burning disk at a multiple of normal and building at a fraction of normal speed. Liveness
+  is the wrong check:
+  ```bash
+  docker exec helix-sandbox docker info | grep "Storage Driver"   # want overlay2, not vfs
+  ```
 
 ## How Hydra works
 
@@ -258,16 +277,44 @@ helix sandbox delete sbx_01xxx
 Keep the org consistent: `--org` is resolved per command, so creating in one org and exec'ing
 without `--org` gives a misleading `404 sandbox not found` rather than an authz error.
 
-Step 3 passing means Hydra is healthy. If step 1 shows nothing, the node never connected — check
-`RUNNER_TOKEN` and the node's logs for `RevDial control connection established`.
+Read the outcomes as three cases, not two:
+
+- **Step 1 empty** (`[]`, exit 0 — the exit code is 0 either way, so don't test `$?`): no node
+  registered. Check `RUNNER_TOKEN` and the node's logs for `RevDial control connection
+  established`. Also just wait: a fresh node pre-pulls the multi-GB desktop image before hydra
+  starts, which took ~10 minutes in one measured run, and the pod reads `READY 1/1` throughout
+  because the probe only checks dockerd.
+- **Step 3 passes**: Hydra is healthy end to end.
+- **Step 1 shows an `online` node but step 3 fails** — the case people misdiagnose. The error
+  reads `no available sandbox host with the requested runtime`, which sounds like "no node" and
+  sends you back to the token you just verified. It usually means the node has not got the
+  runtime's *image*: the catalogue in `HELIX_SANDBOX_RUNTIMES` is control-plane config, and what
+  the node pulled is independent of it. A node that pre-pulled only desktop images has no
+  `ubuntu:22.04`, `node:22-bookworm-slim` or `python:3.13-slim`. Check with:
+  ```bash
+  docker exec helix-sandbox docker images
+  ```
 
 `helix spectask health` checks the **API**, active agent sessions and the MCP endpoint. It does
 not check sandbox hosts — use `helix api /sandboxes` for that.
+
+On 2.12.3 its API line is a **false negative**: it probes `/api/v1/health`, which 404s, so it
+prints `⚠️ Status: 404` against a perfectly healthy control plane — and exits 0 regardless. The
+paths that do answer are `/health`, `/healthz` and `/api/health`. Trust
+`curl -s -o /dev/null -w '%{http_code}' $HELIX_URL/health` over that line.
 
 ## Kubernetes
 
 Two published charts. Do **not** install from a git clone — `Chart.yaml` is generated at release
 time and a clone produces a sentinel version.
+
+Prerequisites the section used to assume: **helm** and a **cluster**. `kind` stands one up in
+about 20 seconds and is enough for the whole control plane; `scripts/kind_helm_install.sh` in
+the helix repo automates the lot. **`jq`** is used by most one-liners here.
+
+**Resource requirements.** A measured install of the full five-pod control plane on a cold host:
+ready **2m11s** after `helm install`, then idling at **~1.8 GiB RAM, under 5% of 4 CPUs, ~5 GiB
+disk**. It fits comfortably on a small VM — much smaller than the component list suggests.
 
 ```bash
 helm repo add helix https://charts.helixml.tech
@@ -299,13 +346,30 @@ helm upgrade --install helix helix/helix-controlplane -f values.yaml \
 Sandbox chart — this is the Hydra node on Kubernetes:
 
 ```bash
+# the token secret's key must be literally "token"
+kubectl create secret generic helix-runner-token --from-literal=token="$RUNNER_TOKEN"
+
 helm upgrade --install helix-sandbox helix/helix-sandbox \
-  --set sandbox.apiUrl=http://helix-controlplane:80 \
+  --set sandbox.apiUrl=http://helix-helix-controlplane:80 \
   --set sandbox.runnerTokenExistingSecret=helix-runner-token \
   --set sandbox.maxSandboxes=10 \
-  --set gpu.vendor=nvidia \
+  --set gpu.vendor=none \
   --set hydra.enabled=true
 ```
+
+Three things in that command are easy to get wrong:
+
+- **`gpu.vendor` defaults to `nvidia`.** Leaving it on a cluster without GPUs parks the pod in
+  `Pending` forever with `0/1 nodes are available: 1 Insufficient nvidia.com/gpu`. Set it to
+  match the hardware; `none` is right for a CPU-only cluster.
+- **`sandbox.apiUrl` must name the real service.** `helm install helix helix/helix-controlplane`
+  creates `helix-helix-controlplane`, not `helix-controlplane` — the release name is prefixed.
+  Check with `kubectl get svc`.
+- **`runnerTokenExistingSecretKey` defaults to `token`**, so the secret must have a key of that
+  name.
+
+The node also needs `/run/udev` to exist on the host, or the pod never starts:
+`MountVolume.SetUp failed for volume "udev": hostPath type check failed: /run/udev is not a directory`.
 
 Chart specifics that bite:
 
@@ -445,7 +509,9 @@ docker exec helix-postgres-1 psql -U postgres -d postgres -c \
   "SELECT id, name, status FROM spec_tasks ORDER BY created_at DESC LIMIT 10;"
 ```
 
-Database `postgres`, user `postgres`. Git repositories live at `/filestore/git-repositories/`
+Credentials differ by install method: Docker Compose uses database `postgres`, user `postgres`;
+the **Helm chart uses database `helix`, user `helix`** (`psql -U postgres` there fails with
+`FATAL: role "postgres" does not exist`). Git repositories live at `/filestore/git-repositories/`
 inside the API container. Order spec tasks by `created_at` — there is no `created` column.
 
 Treat direct SQL as read-only diagnostics; mutate through the API so orchestrator state stays
@@ -465,7 +531,7 @@ consistent.
 | Node registered but `status` not `online` | Heartbeat stopped; check `docker logs helix-sandbox`. |
 | Node never appears | `RUNNER_TOKEN` mismatch, or it can't reach `HELIX_API_URL`. |
 | `sandbox create` hangs then fails | Nested dockerd not up. `docker exec helix-sandbox docker info`. |
-| Nested dockerd won't start | `/hydra-data` is on an overlay filesystem — give it a real volume. |
+| Node healthy but builds crawl and disk fills | Nested dockerd fell back to `vfs` because `/hydra-data` is on overlay. Check `docker info \| grep "Storage Driver"` — it will be *running*, so liveness tells you nothing. |
 | "refused: /var/lib/docker at N% free" | Disk-pressure admission control. Free space or raise the threshold. |
 | Agent's `docker compose up` works but the browser can't reach the service | Desktop not bridged to the Hydra network — check hydra logs for veth/bridge errors. |
 | Container names don't resolve inside a desktop | Hydra's per-bridge DNS server isn't answering; check hydra logs. |

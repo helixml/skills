@@ -173,7 +173,7 @@ Secrets referenced as `${VAR}` in agent YAML come from `helix secret` — see
 | Symptom | Cause |
 |---|---|
 | `selected agent not found` on a spec task | Wrong `app_…` id, or the agent is in a different org |
-| Agent rejected for a spec task | Spec tasks need a **coding** agent; chat agents can't run them |
+| `spec tasks requires agent kind "coding_agent", got …` | The agent's `agent_kind` is `helix_agent` or `org_agent`. `agent_type: zed_external` is not enough — kind is a separate field, and `spectask list-agents` does not print it. Agents from a project YAML `agent:` block are classified `coding_agent`. |
 | `helix spectask start` won't launch an agent | Only `zed_external` assistants launch — check `helix spectask list-agents` |
 | `500 … error running LLM: … 502 … upstream unavailable` | The agent and CLI are fine — its **provider endpoint** is down. Check `helix provider list` and the base URL it points at, especially for self-hosted vLLM/Ollama boxes. |
 | Tools never fire | Check the OpenAPI `schema:` path resolves and the endpoint is reachable from the control plane |

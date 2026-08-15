@@ -112,9 +112,13 @@ from a project `agent:` block is launchable by `helix spectask start`:
 | `opencode` | OpenCode |
 
 An unrecognised value silently becomes `claude_code` rather than erroring — check
-`helix spectask list-agents` afterwards to confirm you got what you meant. Agents that show
-"not launchable via spectask start" are plain chat agents created some other way, not agents whose
-`runtime` was wrong.
+`helix spectask list-agents` afterwards to confirm you got what you meant.
+
+There is a **third** attribute, `agent_kind`, and it is the one `spectask start` actually
+enforces (`coding_agent`). An agent applied from a project `agent:` block is classified
+`coding_agent` automatically, so this section's promise holds — but agents created elsewhere can
+be `zed_external` and still be refused. See the agent-kind table in
+[helix-spec-tasks](../helix-spec-tasks/SKILL.md).
 
 ```bash
 helix apply -f project.yaml -o acme
@@ -220,7 +224,7 @@ helix spectask create --project prj_01xxx --prompt "Bump the linter" --just-do-i
 ```
 
 Flags worth knowing: `--agent app_…` (defaults to the project's coding agent), `--priority`
-(`low|medium|high|critical`), `--type` (`feature|bug|refactor`), `--runtime`
+(`low|medium|high|critical`), `--type` (`feature|bug|refactor`; forked samples also use `task`, so the set is not closed), `--runtime`
 (`ubuntu-desktop` for a streamable GNOME desktop, `headless-ubuntu` for agent-only — cheaper and
 faster; **immutable once the task exists**), `-q` to print only the task id.
 

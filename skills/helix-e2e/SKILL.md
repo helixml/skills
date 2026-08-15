@@ -18,17 +18,43 @@ binary, and a user API key ([helix-cli](../helix-cli/SKILL.md)).
 
 ## 0. Account and key
 
-There is no CLI registration — create the first account in the browser at `$HELIX_URL`. On a
-fresh dev deployment the **first registered user becomes admin**, and after registering you land
-on onboarding, where you must create an organization before any other page works.
-
-Then generate a key under Account → API Keys and export it:
+There is no `helix` subcommand for registration, but there *is* an API for it — you do not need a
+browser:
 
 ```bash
 export HELIX_URL=http://localhost:8080
-export HELIX_API_KEY=hl-...
+
+curl -sS -X POST "$HELIX_URL/api/v1/auth/register" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"e2e@example.com","password":"hunter2hunter2",
+       "password_confirm":"hunter2hunter2","full_name":"E2E User"}'
+```
+
+`password_confirm` is required — omit it and the request fails. A successful call returns 200 with
+a JWT, and **an `hl-` API key is created for the account automatically**, so there is no trip to
+Account → API Keys either:
+
+```bash
+TOKEN=$(curl -sS -X POST "$HELIX_URL/api/v1/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"e2e@example.com","password":"hunter2hunter2"}' | jq -r .token)
+
+export HELIX_API_KEY=$(curl -sS "$HELIX_URL/api/v1/api_keys" \
+  -H "Authorization: Bearer $TOKEN" | jq -r '.[0].key')
+
 helix organization list          # must succeed before you continue
 ```
+
+Two things people expect here that are **not** true:
+
+- **The first registered user is not automatically an admin.** On a fresh deployment the first
+  and only account comes back with `"admin": false` (and `admin = f` in the database). Anything
+  needing admin — `helix user list`, `helix system settings` — needs `ADMIN_USER_IDS` set on the
+  control plane.
+- The browser onboarding flow asks you to create an organization before other pages work. That's
+  a UI constraint; from the API you can go straight to step 1.
+
+Registering in the browser at `$HELIX_URL` also works and is fine if you have one.
 
 ## 1. Organization
 
@@ -96,14 +122,23 @@ helix spectask list-agents -o "$ORG"
 export AGENT=app_...
 ```
 
-Only agents whose **`agent_type`** is `zed_external` can run spec tasks. That is not the same as
-the project YAML's `runtime:` field — every `runtime` value maps to `agent_type: zed_external`, so
-an agent created from a project `agent:` block is always launchable regardless of which code agent
-you picked (see [helix-board](../helix-board/SKILL.md)). Entries marked "not launchable via
-spectask start" are plain chat agents.
+**Do not trust this list alone.** Spec tasks need `agent_kind: coding_agent`, and `list-agents`
+prints `agent_type`, not kind — so a helix-org bot shows up as `zed_external` with a ready-made
+`spectask start` line and is then refused:
 
-If the list is empty, the deployment has no coding agent configured — add one via the project
-YAML's `agent:` block (step 2) and re-check.
+```
+spec tasks requires agent kind "coding_agent", got "org_agent"
+```
+
+Confirm before dispatching:
+
+```bash
+helix api /apps | jq -r '.[] | select(.agent_kind=="coding_agent") | "\(.id) \(.config.helix.name)"'
+```
+
+If nothing comes back, the org has no coding agent — add one via the project YAML's `agent:`
+block (step 2), which is classified `coding_agent`, and re-check. See
+[helix-spec-tasks](../helix-spec-tasks/SKILL.md) for the full three-attribute picture.
 
 ## 3b. Pre-flight the sandbox runner
 

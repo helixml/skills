@@ -28,6 +28,10 @@ Or copy the directories you want out of `skills/` into your agent's skills direc
 
 ## Quick start
 
+> The `spectask board|get|create|update|move|…` commands used below are newer than the latest
+> release (2.12.3) — see [Version note](#version-note). On a released binary, use
+> `helix project tasks <project-id>` and the `helix api` forms each skill gives inline.
+
 ```bash
 export HELIX_URL=https://your-helix.example.com
 export HELIX_API_KEY=hl-...            # Account → API Keys in the web UI
