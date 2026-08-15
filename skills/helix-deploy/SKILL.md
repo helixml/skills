@@ -203,10 +203,14 @@ helix api /sandboxes | jq -r '.[] | "\(.id) \(.status) gpu=\(.gpu_vendor) active
 helix sandbox runtimes
 
 # 3. The real test — API → RevDial → hydra → nested dockerd → container
+export HELIX_ORG=acme          # or pass --org to every command below
 helix sandbox create --name hydra-smoke --runtime headless-ubuntu --ttl 300
 helix sandbox exec sbx_01xxx -- bash -lc "uname -a && cat /etc/os-release | head -2"
 helix sandbox delete sbx_01xxx
 ```
+
+Keep the org consistent: `--org` is resolved per command, so creating in one org and exec'ing
+without `--org` gives a misleading `404 sandbox not found` rather than an authz error.
 
 Step 3 passing means Hydra is healthy. If step 1 shows nothing, the node never connected — check
 `RUNNER_TOKEN` and the node's logs for `RevDial control connection established`.

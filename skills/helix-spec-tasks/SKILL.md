@@ -206,6 +206,11 @@ helix sandbox delete sbx_01xxx
 Sandboxes expire at their TTL. Set one long enough for the job, and delete explicitly when done
 rather than relying on expiry.
 
+**`--org` is per-command, not sticky.** If you create a sandbox in one org and then omit `--org`
+on `exec`/`delete`, the CLI resolves your *first* org and the API answers `404 sandbox not found`
+— which reads like the sandbox died, but is really "wrong org". Export `HELIX_ORG`, or pass
+`--org` to every sandbox subcommand in a script.
+
 The runtime list is deployment config (`HELIX_SANDBOX_RUNTIMES` on the API), not a fixed set —
 `helix sandbox runtimes` is the only reliable answer for a given deployment. `--image` needs
 `HELIX_SANDBOX_ALLOW_CUSTOM_IMAGE=true` on the server and is rejected otherwise.
