@@ -37,8 +37,9 @@ helix spectask list-agents -o acme            # every agent you can see, with it
 helix spectask list-agents -o acme --zed-external-only
 ```
 
-Only `zed_external` agents can be launched by `spectask start`. The unfiltered list shows the
-type so you can tell why a given agent won't launch.
+Only agents with `agent_type: zed_external` can be launched by `spectask start` — which is every
+agent created from a project YAML `agent:` block, whatever its `runtime:`. The unfiltered list
+shows the type so you can tell why a given agent will not launch.
 
 ## Start a task
 

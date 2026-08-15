@@ -72,7 +72,7 @@ spec:
 
   agent:                               # creates/updates the project's coding agent
     name: "Project Assistant"
-    runtime: claude_code               # claude_code (default) | zed | qwen_code | gemini_cli | codex_cli | goose
+    runtime: claude_code               # see the runtime table below
     model: claude-sonnet-4-6
     provider: anthropic
     credentials: api_key               # api_key (default, routes via the Helix LLM proxy) | subscription
@@ -90,6 +90,31 @@ tools, knowledge) belongs on a full agent YAML applied separately — see
 [helix-agents](../helix-agents/SKILL.md). Unknown keys here are silently ignored, so a
 `system_prompt:` under `agent:` will not do what it looks like it does; put standing instructions
 in `spec.guidelines` instead.
+
+### `runtime` vs "only zed_external agents can run spec tasks"
+
+These are two different axes and it's easy to read them as contradictory:
+
+- **`agent_type`** is the *container* kind. Spec tasks need `zed_external` — an agent desktop.
+- **`runtime`** is the *code agent running inside* that desktop.
+
+Every `runtime` a project YAML accepts maps to `agent_type: zed_external`, so any agent created
+from a project `agent:` block is launchable by `helix spectask start`:
+
+| `runtime:` | code agent inside the desktop |
+|---|---|
+| `claude_code` (default, also used for empty/unrecognised values) | Claude Code CLI |
+| `zed` / `zed_agent` | Zed's built-in agent panel |
+| `codex_cli` | OpenAI Codex CLI |
+| `gemini_cli` | Gemini CLI |
+| `qwen_code` | Qwen Code |
+| `goose_code` | Goose (pair with the `goose:` block) |
+| `opencode` | OpenCode |
+
+An unrecognised value silently becomes `claude_code` rather than erroring — check
+`helix spectask list-agents` afterwards to confirm you got what you meant. Agents that show
+"not launchable via spectask start" are plain chat agents created some other way, not agents whose
+`runtime` was wrong.
 
 ```bash
 helix apply -f project.yaml -o acme

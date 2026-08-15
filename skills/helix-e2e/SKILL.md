@@ -96,8 +96,14 @@ helix spectask list-agents -o "$ORG"
 export AGENT=app_...
 ```
 
-Only `zed_external` agents can run spec tasks. If the list is empty, the deployment has no coding
-agent configured — add one via the project YAML's `agent:` block (step 2) and re-check.
+Only agents whose **`agent_type`** is `zed_external` can run spec tasks. That is not the same as
+the project YAML's `runtime:` field — every `runtime` value maps to `agent_type: zed_external`, so
+an agent created from a project `agent:` block is always launchable regardless of which code agent
+you picked (see [helix-board](../helix-board/SKILL.md)). Entries marked "not launchable via
+spectask start" are plain chat agents.
+
+If the list is empty, the deployment has no coding agent configured — add one via the project
+YAML's `agent:` block (step 2) and re-check.
 
 ## 3b. Pre-flight the sandbox runner
 
