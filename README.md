@@ -48,6 +48,16 @@ attach|attachments|approve|archive|delete|progress`, and addressing a task by `s
 which is merged to `main` and ships in the first release after 2.12.3. Every skill that uses
 them also gives the `helix api` equivalent, so the guidance holds on older binaries too.
 
+Check with `helix spectask --help`. On a binary that predates them the failure is misleading —
+cobra treats `board` as a stray positional and reports the flag instead:
+
+```
+$ helix spectask board --project prj_01xxx
+Error: unknown flag: --project
+```
+
+That means "your binary is too old", not "wrong flag".
+
 ## Contributing
 
 Each skill is one directory under `skills/` containing a `SKILL.md` with YAML frontmatter:

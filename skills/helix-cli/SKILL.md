@@ -43,6 +43,10 @@ export HELIX_API_KEY=hl-...                # user API key, created in the web UI
 export HELIX_ORG=my-org                    # optional default org (name or org_… id)
 ```
 
+- **There are no global `--url` / `--api-key` flags.** `helix --help` has only `--help`.
+  Environment variables are the only way to point the CLI at a control plane, so in a script
+  export them explicitly rather than relying on the `http://localhost:8080` default — on a host
+  with more than one Helix reachable, a defaulted `HELIX_URL` silently talks to the wrong one.
 - The key **must** be a user key (`hl-…`). `oh-hallo-insecure-token` is the *runner* token — it
   authenticates runners to the control plane, not you, and most endpoints will reject it.
 - Most org-scoped commands accept `--org`/`--organization` by **name or id**. If you omit it and
