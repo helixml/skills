@@ -96,6 +96,40 @@ helix apply -f project.yaml -o acme
 helix apply -f https://example.com/project.yaml     # URL and - (stdin) also work
 ```
 
+### A project needs a repository
+
+**`helix apply` with no `repository:` / `repositories:` block creates a project with no repo at
+all**, and every spec task on it dies during workspace setup:
+
+```
+Workspace setup failed (exit code 1): No primary repository specified
+  HELIX_REPOSITORIES not set
+```
+
+The task looks like it's planning for several minutes first, so this is easy to misread as a
+hung agent. Confirm with `helix api /projects/<id>/repositories` — `[]` means this is your
+problem.
+
+Attaching an external repo needs the git provider connected via OAuth. If you just need *a* repo
+— a scratch project, a smoke test, somewhere for an agent to write a report — create a
+Helix-hosted one instead, which needs no external credentials:
+
+```bash
+helix api -X POST /git/repositories --input '{
+  "name": "scratch",
+  "repo_type": "code",
+  "owner_id": "usr_01xxx",
+  "organization_id": "org_01xxx",
+  "project_id": "prj_01xxx",
+  "is_external": false,
+  "default_branch": "main",
+  "initial_files": {"README.md": "# scratch\n"}
+}'
+helix api -X PUT /projects/prj_01xxx/repositories/code-scratch-01xxx/primary
+```
+
+Then reset and re-run the task: `helix spectask move <task> backlog && helix spectask start <task>`.
+
 `kanban.wip_limits` is the only way to set WIP limits from the CLI — there is no
 `board-settings` command; the limits live in the project and are re-applied on every
 `helix apply`.
