@@ -129,7 +129,8 @@ prompt, so the agent reads it without having to be told to.
 # spec task container — session id first, then the local file
 helix spectask copy ses_01xxx ./patch.diff                       # → ~/work/incoming/patch.diff
 helix spectask copy ses_01xxx ./config.json --dest /home/retro/work/config.json
-helix spectask exec ses_01xxx cat /home/retro/work/incoming/patch.diff
+helix spectask exec ses_01xxx ls /home/retro/work/incoming       # `exec` is allowlisted:
+helix spectask exec ses_01xxx cat /home/retro/work/incoming/patch.diff   # ls/cat/echo/test only
 
 # standalone sandbox
 echo "hello" | helix sandbox write sbx_01xxx /root/in.txt --mode 644

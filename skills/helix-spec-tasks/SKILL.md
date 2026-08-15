@@ -142,13 +142,41 @@ helix spectask mcp desktop ses_01xxx mouse_click --x 640 --y 480
 
 ## Work inside the task's container
 
-```bash
-helix spectask exec ses_01xxx ls -la /home/retro/work
-helix spectask exec ses_01xxx bash -c "cd repo && git status && git log --oneline -5"
-helix spectask exec ses_01xxx --env FOO=bar printenv FOO
-helix spectask exec ses_01xxx --background python3 server.py
-helix spectask exec ses_01xxx --timeout 300 bash -c "go test ./..."
+`helix spectask exec` is **not** a general-purpose shell. The desktop container enforces a
+server-side allowlist and rejects anything else with `403 command not allowed: <cmd>`:
 
+```
+vkcube  glxgears  weston-simple-egl        # benchmark/graphics
+ls  cat  echo  test                        # inspection
+pkill  killall                             # process control
+npm  claude                                # agent CLI upkeep
+helix-claude-auth-wrapper  helix-codex-auth-wrapper
+git                                        # only `git config --global user.name|user.email <v>`
+```
+
+No `bash`, no `sh`, no `python3`, no `go`. There is no shell, so pipes, redirection, `&&` and
+globs are not available either — each call is one `execve` of an allowlisted binary.
+
+```bash
+helix spectask exec ses_01xxx ls /home/retro/work
+helix spectask exec ses_01xxx cat /home/retro/work/README.md
+helix spectask exec ses_01xxx -- ls -la /home/retro/work        # -- before flag-like args
+helix spectask exec ses_01xxx --timeout 300 vkcube
+helix spectask exec ses_01xxx --background vkcube
+```
+
+Use `--` before any argument starting with `-`, or cobra parses it as a flag of `exec` itself
+(`unknown shorthand flag: 'c' in -c` is what a forgotten `--` looks like).
+
+**To actually run arbitrary commands**, pick one of:
+
+- **Ask the agent** — `helix spectask send spt_01xxx "run the tests and paste the failures" --wait`.
+  It has a real shell; you are talking to something that can use it.
+- **Use a standalone sandbox** — `helix sandbox exec` *is* general-purpose (see below).
+
+Copying files in is unrestricted:
+
+```bash
 helix spectask copy ses_01xxx ./patch.diff                          # → ~/work/incoming/patch.diff
 helix spectask copy ses_01xxx ./config.json --dest /home/retro/work/config.json
 helix spectask copy ses_01xxx ./data.txt --no-file-manager          # don't pop the file manager
@@ -156,8 +184,7 @@ helix spectask copy ses_01xxx ./data.txt --no-file-manager          # don't pop 
 
 Note the argument order: session **first**, then the local file.
 
-`--timeout` defaults to 30 seconds — raise it for builds and test runs or the command is cut off
-mid-flight.
+`--timeout` on `exec` defaults to 30 seconds.
 
 ## Stop and resume
 
@@ -244,5 +271,7 @@ Expected: static ≈10, terminal activity 15–35, `vkcube` 55–60.
 | Screenshot 503s | The container is up but RevDial hasn't connected yet. Wait and retry before assuming it's broken. |
 | Task sits in `spec_review` forever | It's waiting on a human. `helix spectask approve spt_01xxx`. |
 | Task sits queued with `⏳` | A WIP limit or a dependency. Raise the limit in the project YAML or finish the blocker. |
-| Agent stops responding | `helix spectask interact spt_01xxx --history` to see the last turn, then `helix spectask exec` to inspect the container. |
+| Agent stops responding | `helix spectask interact spt_01xxx --history` to see the last turn, then `helix spectask exec … ls/cat` to inspect the container. |
+| `403 command not allowed: bash` | `spectask exec` is allowlisted — no shell. Ask the agent, or use a standalone sandbox. |
+| `unknown shorthand flag: 'c' in -c` | Missing `--` before flag-like arguments to `exec`. |
 | Screenshot/stream fails on a headless task | Expected — `headless-ubuntu` has no compositor. |

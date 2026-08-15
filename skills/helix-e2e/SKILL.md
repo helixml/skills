@@ -173,11 +173,16 @@ helix spectask interact "$TASK" --history --count 5
 This is the step that proves the whole path: CLI → API → RevDial → sandbox → agent → back. If
 messages land but nothing comes back, the agent isn't connected — see step 11.
 
-Inspect the container directly if you need to:
+Inspect the container directly if you need to — remembering that `exec` only runs allowlisted
+binaries (`ls`, `cat`, `echo`, `test`, …), with no shell:
 
 ```bash
-helix spectask exec "$SESSION" bash -c "cd ~/work && git status && git log --oneline -3"
+helix spectask exec "$SESSION" ls /home/retro/work
+helix spectask exec "$SESSION" cat /home/retro/work/README.md
 ```
+
+For anything needing a real shell, ask the agent instead:
+`helix spectask send "$TASK" "run git status and paste the output" --wait`.
 
 ## 7. Board mechanics
 
