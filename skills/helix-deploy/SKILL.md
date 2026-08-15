@@ -16,6 +16,9 @@ A Helix deployment is two pieces:
 GPU **runners** are a third, optional piece — only needed if you want Helix to serve models
 itself instead of calling an OpenAI-compatible API.
 
+**Do you need a GPU?** Only for streamed agent *desktops*. See
+[GPU: what actually needs one](#gpu-what-actually-needs-one) before buying hardware.
+
 Once it's up, drive it with [helix-cli](../helix-cli/SKILL.md); prove it works with
 [helix-e2e](../helix-e2e/SKILL.md).
 
@@ -35,7 +38,7 @@ Useful flags (`./install.sh --help` for the full list):
 | `--sandbox` | Sandbox/Hydra node — see below |
 | `--runner` | GPU runner container |
 | `--cli` | Just the `helix` binary |
-| `--code` | Enable Helix Code (agent desktops, streaming). Loads the `uhid` kernel module. Needs a GPU and `--api-host` |
+| `--code` | Enable Helix Code (agent desktops, streaming). Loads the `uhid` kernel module. Documented as needing a GPU and `--api-host` — omit it if you only want headless sandboxes |
 | `--api-host <url>` | Public URL. HTTPS on Ubuntu also installs and configures Caddy |
 | `--runner-token <tok>` | Shared secret joining runners/sandboxes to the control plane |
 | `--privileged-docker` | Hydra privileged mode — see the warning below |
@@ -89,8 +92,12 @@ This is the piece people forget, and the reason spec tasks sit forever with
 `sandbox_state: absent`.
 
 ```bash
-# same machine as the control plane
+# same machine as the control plane, with streamed desktops (needs a GPU)
 sudo ./install.sh --controlplane --sandbox --code \
+  --api-host https://helix.example.com --runner-token "$RUNNER_TOKEN"
+
+# no GPU on this host: drop --code and stay on headless runtimes
+sudo ./install.sh --controlplane --sandbox \
   --api-host https://helix.example.com --runner-token "$RUNNER_TOKEN"
 
 # dedicated GPU box joining an existing control plane
@@ -161,6 +168,42 @@ session then shares one daemon and one network. It exists for Helix-in-Helix dev
 agent that needs to run Helix itself, or `k3s`, or anything else wanting a real Docker. **It
 removes tenant isolation: every user can see and control every other user's containers.** Only
 enable it on single-tenant or development hosts.
+
+### GPU: what actually needs one
+
+The GPU is for **video encoding and rendering a streamed desktop**, nothing else. Split the
+question by workload:
+
+| Workload | Needs a render node? |
+|---|---|
+| Control plane (API, Postgres, RAG, frontend) | No |
+| Headless sandboxes (`headless-ubuntu`, `node22`, `python313`, custom images) | No — no compositor, no encoder, just a container |
+| Spec tasks with `--runtime headless-ubuntu` | No |
+| `ubuntu-desktop` runtime — streamed GNOME, screenshots, video | **Yes** |
+| Serving models on Helix's own runners | Yes (that's a runner, not a sandbox) |
+
+So a CPU-only box is enough to run coding agents, provided you keep them headless. You lose the
+streamed desktop, `spectask screenshot`, `spectask stream` and the desktop MCP tools; the agent
+itself, its repo, its shell and the whole spec-task workflow are unaffected.
+
+**Current caveat — a CPU-only sandbox host is scheduled as if it can host nothing.** The node
+reports `gpu_vendor: "none"` and `render_node: "SOFTWARE"` in its heartbeat, and
+`SandboxInstance.CanHostSandbox()` excludes both, so the placement logic skips it for *headless*
+work too. Symptom: the node shows `status: online` in `helix api /sandboxes` while every sandbox
+and spec task fails to place. The exclusion was written to keep sandboxes off inference-only
+Neuron/inf2 hosts and catches CPU-only hosts as collateral. Until that is split, a sandbox node
+needs a render node even for headless workloads.
+
+Check what a node reports:
+
+```bash
+helix api /sandboxes | jq -r '.[] | "\(.id) gpu=\(.gpu_vendor) render=\(.render_node) status=\(.status)"'
+```
+
+`install.sh --code` is documented as requiring a GPU, and the sandbox installer prints
+`Warning: No GPU detected. Sandbox may not work correctly.` before setting `GPU_VENDOR=none`.
+For a GPU-less host use `code-software` in the dev stack (software rendering via `x264enc`) and
+expect low frame rates; the desktop path is not the reason to run Helix on such a host.
 
 ### Sandbox runtimes
 
@@ -414,6 +457,7 @@ consistent.
 | Login redirects somewhere broken | `SERVER_URL` / `KEYCLOAK_FRONTEND_URL` don't match how you reach it. |
 | `401` on every CLI call | Runner token instead of a user `hl-` key. |
 | **Spec task never gets a sandbox** | No sandbox node. `helix api /sandboxes` — empty means none registered. |
+| Node `online` but nothing ever places on it | Check `gpu_vendor` / `render_node` — `none`/`SOFTWARE` is currently excluded from placement even for headless work. |
 | Node registered but `status` not `online` | Heartbeat stopped; check `docker logs helix-sandbox`. |
 | Node never appears | `RUNNER_TOKEN` mismatch, or it can't reach `HELIX_API_URL`. |
 | `sandbox create` hangs then fails | Nested dockerd not up. `docker exec helix-sandbox docker info`. |
