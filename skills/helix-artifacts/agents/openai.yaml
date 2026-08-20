@@ -1,0 +1,4 @@
+interface:
+  display_name: "Helix Artifacts"
+  short_description: "Build and publish static apps in Helix"
+  default_prompt: "Use $helix-artifacts to build and publish a static artifact in my Helix project."
