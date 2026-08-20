@@ -12,7 +12,7 @@ Publish finished static output with `helix artifact`. Artifacts inherit project 
 - Use one self-contained `.html` file for documents, reports, diagrams, and small interactive experiences.
 - Use a directory for a compiled SPA. Build it first and publish only the static output directory such as `dist/` or `build/`.
 - Do not publish source trees, dependency directories, development servers, server-side applications, secrets, or API keys.
-- Make asset URLs relative. A canonical artifact runs below `/artifacts/<id>/`; absolute paths such as `/assets/app.js` point at Helix, not the artifact.
+- Make asset URLs relative so the same build works on its isolated artifact origin and across local deployments.
 
 ## Create
 
@@ -33,10 +33,9 @@ Artifacts are project-private by default. Make publication an explicit user or t
 
 ```bash
 helix artifact create dist/ --name "Public demo" --visibility public
-helix artifact create dist/ --name "Public demo" --visibility public --subdomain
 ```
 
-Use `--subdomain` only when the user wants a directly shareable public hostname. Public canonical `/artifacts/<id>/` pages are intentionally browser-sandboxed because they share the Helix hostname. Project-private artifacts transparently bootstrap into an isolated authenticated origin so multi-file apps work without exposing a public URL. A requested subdomain is public; never use it for private content.
+The stable `/artifacts/<id>` URL opens Helix's artifact viewer with a permission-checked toolbar and sandboxed iframe. Project-private artifacts render only inside that viewer. Public artifacts automatically receive an isolated share subdomain; the viewer's Share menu copies it or makes the artifact private again. Never publish unless the user or task explicitly requires public access.
 
 For a nonstandard HTML entrypoint:
 
@@ -48,7 +47,7 @@ The CLI records `HELIX_SESSION_ID` and `HELIX_SPEC_TASK_ID` automatically when t
 
 ## Verify
 
-Create with `--json`, inspect the returned `url`, then fetch or open that exact URL. For SPAs, verify both the root and one client-side route. Do not report completion after only running the frontend build.
+Create with `--json`, inspect the returned `url`, then open that viewer URL. When public, also verify `subdomain_url`. For SPAs, verify both the root and one client-side route. Do not report completion after only running the frontend build.
 
 ```bash
 helix artifact create dist/ --name "Demo" --json
@@ -71,8 +70,8 @@ helix artifact list --project prj_01xxx --json
 helix artifact get art_01xxx
 helix artifact update art_01xxx dist/
 helix artifact update art_01xxx --name "New title"
-helix artifact update art_01xxx --visibility public --subdomain
-helix artifact update art_01xxx --visibility project --subdomain=false
+helix artifact update art_01xxx --visibility public
+helix artifact update art_01xxx --visibility project
 helix artifact delete art_01xxx
 ```
 
