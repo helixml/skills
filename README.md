@@ -38,7 +38,7 @@ Or copy the directories you want out of `skills/` into your agent's skills direc
 | [helix-board](skills/helix-board/SKILL.md) | Projects and the Kanban board: project YAML, listing the board, creating and moving cards, labels, assignees, WIP limits, approvals, archiving. |
 | [helix-spec-tasks](skills/helix-spec-tasks/SKILL.md) | Running work: start a task, watch and chat with its agent, exec in its sandbox, screenshot and stream the desktop, drive standalone sandboxes. |
 | [helix-files](skills/helix-files/SKILL.md) | Getting files into Helix: filestore uploads, knowledge/RAG indexing and search, spec-task attachments, files in and out of containers. |
-| [helix-artifacts](skills/helix-artifacts/SKILL.md) | Build and publish project-scoped static pages and compiled SPAs, then update, verify, list, or delete them. |
+| [helix-artifacts](skills/helix-artifacts/SKILL.md) | Build and publish project-scoped static pages, compiled SPAs, PDFs, and images, then update, verify, list, or delete them. |
 | [helix-agents](skills/helix-agents/SKILL.md) | Agent YAML (system prompts, OpenAPI tools, MCP servers, tests), chatting with agents, models and provider endpoints. |
 | [helix-deploy](skills/helix-deploy/SKILL.md) | Install and debug: control plane on Compose or Helm, the **Hydra sandbox runner** that actually runs agent desktops, runtime config, health checks, logs, troubleshooting. |
 | [helix-e2e](skills/helix-e2e/SKILL.md) | Prove a deployment works end to end: org → project → agent → task → chat → approve → PR → cleanup. |
