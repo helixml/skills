@@ -1,6 +1,6 @@
 ---
 name: helix-agents
-description: Define, deploy, chat with and test Helix agents (apps) from the CLI — apply agent YAML with system prompts, API/OpenAPI tools, MCP servers and knowledge; grant team/user access; chat with an agent or an external Zed agent; run YAML-defined evaluations; and register models and provider endpoints. Use when the user wants to create or update a Helix agent/app, talk to a Helix agent, wire tools or MCP servers into one, or manage Helix models.
+description: Use when defining, deploying, chatting with or testing a Helix agent (app) — applying agent YAML, wiring API/OpenAPI tools, MCP servers or knowledge into one, granting team or user access, running YAML-defined evaluations, or registering models and provider endpoints.
 ---
 
 # Helix agents
@@ -9,66 +9,16 @@ An **agent** (an "app" in the API, `app_…`) is a configured assistant: a model
 and optionally tools, MCP servers, knowledge, and tests. Agents back both plain chat and the
 coding agents that run spec tasks.
 
-Read [helix-cli](../helix-cli/SKILL.md) for auth first.
-
 `helix agent` aliases to `app`, `apps`, `agents`, and `a` — all four appear in the wild.
+
+> **Auth.** `export HELIX_URL=… HELIX_API_KEY=hl-…`, then `helix organization list` to verify.
+> Inside a Helix sandbox this is already configured — see [helix-session](../helix-session/SKILL.md).
 
 ## Define an agent
 
-```yaml
-# agent.yaml
-name: support-bot
-description: Answers product support questions from the docs
-assistants:
-  - name: Helix
-    model: claude-sonnet-4-6
-    provider: anthropic
-    system_prompt: |
-      You answer support questions using only the indexed documentation.
-      If the docs don't cover it, say so and suggest opening a ticket.
-
-    knowledge:
-      - name: docs
-        source:
-          web:
-            urls:
-              - https://docs.example.com/getting-started
-
-    apis:
-      - name: Hiring Pipeline API
-        description: List job vacancies, filter by title or candidate
-        url: https://demos.helix.ml
-        schema: ./openapi/jobvacancies.yaml     # local path or URL
-
-    mcps:
-      - name: github
-        transport: stdio
-        command: mcp-server-github
-        env:
-          GITHUB_TOKEN: "${GITHUB_TOKEN}"       # resolved from Helix secrets
-
-    tests:
-      - name: in-scope
-        steps:
-          - prompt: How do I rotate my API key?
-            expected_output: A procedure referencing the docs
-```
-
-Apply it:
-
-```bash
-helix apply -f agent.yaml -o acme          # helix agent apply is the same command
-helix apply -f agent.yaml --global         # available to every org (admin)
-helix apply -f https://example.com/agent.yaml
-cat agent.yaml | helix apply -f -
-```
-
-`helix apply` dispatches on the YAML's `kind`: `kind: Project` applies a project (see
-[helix-board](../helix-board/SKILL.md)); anything else is treated as an agent config. Apply is
-idempotent — same `name`, same org updates in place.
-
-For knowledge sync flags (`--rsync`, `--wait-knowledge`, `--refresh-knowledge`) see
-[helix-files](../helix-files/SKILL.md).
+Agents are declared in YAML and applied with `helix apply -f agent.yaml`. The schema covers the
+model and system prompt, API/OpenAPI tools, MCP servers, knowledge and tests:
+[reference/agent-yaml.md](reference/agent-yaml.md).
 
 ## Manage agents
 
@@ -131,42 +81,13 @@ and time out.
 
 ## Models and providers
 
-```bash
-helix model list                              # --runtime vllm --type chat --enabled true
-helix model list -q                           # ids only
-helix model inspect llama3.1:8b --format json
-helix model apply -f model.yaml
-helix model delete my-model --force
-```
+Register models, and attach any OpenAI-compatible endpoint (OpenAI, Together, a self-hosted
+vLLM): [reference/models-and-providers.md](reference/models-and-providers.md).
 
-```yaml
-# model.yaml
-apiVersion: model.aispec.org/v1alpha1
-kind: Model
-metadata:
-  name: llama3.1:8b
-spec:
-  id: llama3.1:8b
-  name: Llama 3.1 8B
-  type: chat            # chat | image | embed
-  runtime: ollama       # ollama | vllm | diffusers
-  memory: "8GB"
-  context_length: 8192
-  enabled: true
-```
-
-You only declare total memory — Helix picks the GPUs, sets tensor-parallel size for vLLM, and
-computes memory ratios itself.
-
-To attach a hosted or self-hosted OpenAI-compatible endpoint instead of running models locally:
-
-```bash
-helix provider create -n my-vllm -u https://vllm.internal/v1 -f ./key.txt -m qwen3-32b
-helix provider list
-```
-
-Secrets referenced as `${VAR}` in agent YAML come from `helix secret` — see
-[helix-cli](../helix-cli/SKILL.md).
+Secrets referenced as `${VAR}` in agent YAML are created with `helix secret` — see
+[helix-cli/reference/secrets-and-providers.md](../helix-cli/reference/secrets-and-providers.md).
+That command creates and lists them; it never reads a value back. An agent that needs the value
+at runtime uses [helix-session](../helix-session/SKILL.md).
 
 ## Troubleshooting
 
