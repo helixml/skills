@@ -34,7 +34,8 @@ Or copy the directories you want out of `skills/` into your agent's skills direc
 
 | Skill | Use it for |
 |---|---|
-| [helix-cli](skills/helix-cli/SKILL.md) | Install and authenticate the CLI, the command map, orgs/teams/members/secrets/providers, and the `helix api` escape hatch. **Start here.** |
+| [helix-session](skills/helix-session/SKILL.md) | **Running inside Helix?** Start here: what is already in your environment, and how to get a secret. |
+| [helix-cli](skills/helix-cli/SKILL.md) | Install and authenticate the CLI, the command map, orgs/teams/members/secrets/providers, and the `helix api` escape hatch. |
 | [helix-board](skills/helix-board/SKILL.md) | Projects and the Kanban board: project YAML, listing the board, creating and moving cards, labels, assignees, WIP limits, approvals, archiving. |
 | [helix-spec-tasks](skills/helix-spec-tasks/SKILL.md) | Running work: start a task, watch and chat with its agent, exec in its sandbox, screenshot and stream the desktop, drive standalone sandboxes. |
 | [helix-files](skills/helix-files/SKILL.md) | Getting files into Helix: filestore uploads, knowledge/RAG indexing and search, spec-task attachments, files in and out of containers. |
@@ -81,14 +82,33 @@ That means "your binary is too old", not "wrong flag".
 
 ## Contributing
 
-Each skill is one directory under `skills/` containing a `SKILL.md` with YAML frontmatter:
+Each skill is one directory under `skills/` containing a `SKILL.md`, plus an optional
+`reference/` directory:
+
+```
+skills/helix-something/
+  SKILL.md              # router: concept, the common path, a table of pointers
+  reference/
+    some-domain.md      # loaded only when that domain is the task
+```
 
 ```markdown
 ---
 name: helix-something
-description: One line describing what the skill covers and when to reach for it.
+description: Use when <specific triggering conditions and symptoms>.
 ---
 ```
 
+These skills are loaded on every Helix run, so context cost is a feature requirement, not a
+nicety. Two rules follow:
+
+- **`description` states when to reach for the skill, not what it contains.** An inventory of
+  everything a skill covers widens the trigger surface until the skill fires on every run, and
+  invites agents to answer from the description instead of reading the body.
+- **`SKILL.md` stays a router.** Keep it well under 500 lines. Anything a task needs only
+  sometimes belongs in `reference/`, linked exactly one level deep so the file is read whole.
+  Give reference files over 100 lines a `## Contents` list.
+
 Keep commands verified against a real control plane — check `helix <command> --help` before
-documenting a flag, and mark anything that isn't in a released binary yet.
+documenting a flag, and mark anything that isn't in a released binary yet. Time-sensitive
+notes go in a collapsed `## Old patterns` block at the end of the file, not inline.

@@ -1,6 +1,6 @@
 ---
 name: helix-artifacts
-description: Build, publish, update, inspect, list, and delete project-scoped Helix Artifacts, including resolving the correct Helix organization and project first. Use when a user asks an agent for an interactive page, dashboard, visualization, prototype, report, PDF, image, shareable HTML, or compiled static SPA that should be uploaded to and served by a Helix project rather than run in a sandbox.
+description: Use when an agent is asked for an interactive page, dashboard, visualization, prototype, report, PDF, image, shareable HTML, or compiled static SPA that should be uploaded to and served by a Helix project rather than left in a sandbox, or when updating, listing or deleting one that already exists.
 ---
 
 # Helix Artifacts
@@ -109,4 +109,4 @@ Updating content creates a new immutable version and keeps the artifact ID and U
 
 ## Authentication
 
-Agent workspaces use `HELIX_API_URL`, `USER_API_TOKEN`, and `HELIX_PROJECT_ID`. A local operator can instead set `HELIX_URL`, `HELIX_API_KEY`, and pass `--project`. Never print tokens or place them in artifact content.
+Agent workspaces use `HELIX_API_URL`, `USER_API_TOKEN`, and `HELIX_PROJECT_ID`, all already exported — see [helix-session](../helix-session/SKILL.md). A local operator sets `HELIX_URL` and `HELIX_API_KEY` instead, and passes `--project`. Never print tokens or place them in artifact content.
