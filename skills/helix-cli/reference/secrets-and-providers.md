@@ -10,21 +10,25 @@
 This is the common case, and none of the `helix secret` commands below do it. They are the
 administrator's CRUD over the store: every listing returns metadata, never values.
 
-There are exactly two ways to obtain a value, and which one applies is decided by your tool
-list, not by trial and error:
+Try these in order and stop at the first that yields a value:
 
-1. **`get_secret` is in your tool list** — call it: `get_secret {"name": "SLACK_BOT_TOKEN"}`.
-   You are an org bot or worker, and this is the only route to bound credentials.
-2. **`get_secret` is absent** — you are not a bot. Check `$HELIX_SESSION_ID`: set means you
-   are in a spec task or project sandbox, so the credential, if scoped to this project,
-   is already an environment variable (`printenv NAME`). Unset means you are not inside
-   Helix at all.
+1. **`get_secret`**, if it is in your tool list: `get_secret {"name": "SLACK_BOT_TOKEN"}`.
+   Prefer it for every credential. It covers everything granted to you whatever the backend
+   — a Helix secret or a connected account (a Slack or GitHub install) alike — and which
+   credentials those are is controlled by the bot's own grants, not by the backend type.
+   `list_secrets` shows the names you have been granted.
+2. **An environment variable**: `printenv NAME`. Project secrets are injected at container
+   creation, so a credential scoped to this project is already in the environment. This is
+   the route when `get_secret` is not in your tool list — you are not running as a bot.
+   `$HELIX_SESSION_ID` unset means you are not inside Helix at all.
+3. **`helix secret` / `helix api`** — for managing the store, not for reading a value. They
+   exist for completeness; neither returns one.
 
-**If neither yields a value, stop.** The secret is not granted to this worker or project.
-Seeing its name in a listing confirms only that it exists somewhere. Do not retry the same
-command with different flags, do not guess API endpoints, do not grep the filesystem or logs,
-and do not go reading the Helix source — none of those contain the value, and the search has
-no terminating condition. Report that the credential is not available to you and stop.
+**If the first two yield nothing, stop.** The credential is not granted to this worker or
+project. Seeing its name in a listing confirms only that it exists somewhere. Do not retry the
+same command with different flags, do not guess API endpoints, do not grep the filesystem or
+logs, and do not go reading the Helix source — none of those contain the value, and the search
+has no terminating condition. Report that the credential is not available to you and stop.
 
 See [helix-session](../../helix-session/SKILL.md) for the full picture of what a sandbox
 exports, if that skill is available to you.
