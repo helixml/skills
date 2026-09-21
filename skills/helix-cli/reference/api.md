@@ -23,6 +23,11 @@ helix api -X POST /projects --input @project.json
   field when there's no body.
 - `--timeout` is in seconds (default 120).
 
+**There is no endpoint that returns a secret's value.** `/secrets` and friends list metadata
+only, and no query parameter changes that. If a first-class command did not give you a value,
+guessing paths here will not either — see
+[secrets-and-providers.md](secrets-and-providers.md) for the two routes that do work.
+
 When you find yourself scripting the same `helix api` call repeatedly, that's a missing CLI
 command — the CLI lives in `api/pkg/cli/` in the helix repo and new commands are small cobra
 files.

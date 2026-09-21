@@ -1,14 +1,38 @@
 # Secrets and provider endpoints
 
 ## Contents
-- Managing secrets (administrator view)
 - Reading a secret from inside a container
+- Managing secrets (administrator view)
 - Provider endpoints
 
-## Managing secrets
+## Reading a secret from inside a container
 
-Secrets are injected as environment variables into project sessions, so this is how an agent
-gets a `GITHUB_TOKEN` or an API key without it landing in a prompt or the repo:
+This is the common case, and none of the `helix secret` commands below do it. They are the
+administrator's CRUD over the store: every listing returns metadata, never values.
+
+There are exactly two ways to obtain a value, and which one applies is decided by your tool
+list, not by trial and error:
+
+1. **`get_secret` is in your tool list** — call it: `get_secret {"name": "SLACK_BOT_TOKEN"}`.
+   You are an org bot or worker, and this is the only route to bound credentials.
+2. **`get_secret` is absent** — you are not a bot. Check `$HELIX_SESSION_ID`: set means you
+   are in a spec task or project sandbox, so the credential, if scoped to this project,
+   is already an environment variable (`printenv NAME`). Unset means you are not inside
+   Helix at all.
+
+**If neither yields a value, stop.** The secret is not granted to this worker or project.
+Seeing its name in a listing confirms only that it exists somewhere. Do not retry the same
+command with different flags, do not guess API endpoints, do not grep the filesystem or logs,
+and do not go reading the Helix source — none of those contain the value, and the search has
+no terminating condition. Report that the credential is not available to you and stop.
+
+See [helix-session](../../helix-session/SKILL.md) for the full picture of what a sandbox
+exports, if that skill is available to you.
+
+## Managing secrets (administrator view)
+
+These manage the store from outside. They are how a secret gets *created*, not how a running
+agent reads one:
 
 ```bash
 helix secret list                          # personal; --org for org-owned
@@ -18,19 +42,12 @@ helix secret update -n GITHUB_TOKEN -v ghp_yyy
 helix secret delete -n GITHUB_TOKEN
 ```
 
-Names must be shell identifiers. `USER_API_TOKEN` and anything beginning `HELIX_` are reserved
-for bootstrap configuration and are rejected, so a project secret can never shadow a session's
-own credentials.
+A project-scoped secret is injected as an environment variable into that project's sessions,
+which is how an agent gets a `GITHUB_TOKEN` without it landing in a prompt or the repo.
+Injection happens once, when a container is created — adding a secret to a project does not
+reach sessions that are already running, so start a new one.
 
-Injection happens once, when a container is created. Adding a secret to a project does not
-reach sessions that are already running — start a new one.
-
-## Reading a secret from inside a container
-
-`helix secret list` is the administrator's view of the store: listings return metadata, never
-values. It is not how a running agent obtains a credential. For that — project secrets as env
-vars, or the `get_secret` MCP tool for org bots — see
-[helix-session](../../helix-session/SKILL.md).
+Names must be shell identifiers. `USER_API_TOKEN` is reserved for bootstrap configuration.
 
 ## Provider endpoints
 

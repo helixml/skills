@@ -63,8 +63,14 @@ happens once, at container creation.
 
 ### As an org bot or worker — call the `get_secret` MCP tool
 
-Bot credentials are *bound* to the worker, not injected. `printenv` will never show them, and
-there is no boot-time env-var fallback.
+Bot credentials are *bound* to the worker. `get_secret` is the only route that works for
+every binding, so reach for it first and do not infer availability from `printenv`.
+
+A binding backed by a connected account (a Slack or GitHub install) is resolved through that
+connection and never appears in the environment. A binding backed by a Helix secret must be a
+project secret of the worker's own project, so that one *is* also injected as an env var —
+the two routes return the same value. Do not treat an empty `printenv` as evidence that a
+credential is unavailable.
 
 ```jsonc
 // list_secrets  — no arguments; returns names and usage metadata, never values
