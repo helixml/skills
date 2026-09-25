@@ -62,6 +62,46 @@ baseline prompt without them.
 10. **Browser hangs**: after 2 failed browser calls, open `new_page`, retry once, then stop and
     report. Never kill Chrome or write your own automation.
 
+## Page libraries (the biggest lever for portals)
+
+A bot that discovers a complex page from scratch each run is slow and flaky: the DHRE bot spent
+~40 s per tool call reasoning about Lightning shadow DOM and needed 5 scripts (3 failed) to fill
+one step. Do the discovery **once**, as the bot builder, and ship the result as code:
+
+1. **Explore** the live page with the bot's own browser — `helix session exec <sid> -- …` runs in
+   the sandbox; Chrome's debugging port is `127.0.0.1:9222`, so a small Node script
+   (`Runtime.evaluate` over `/json` → `webSocketDebuggerUrl`) can run JS in the bot's logged-in tab.
+2. **Write a library** as a single `() => { … window.__lib = {scan, fill, press}; return scan() }`
+   function: a field map (stable key → label/position), setters per field type, picklist selection
+   by visible label, value normalisation (dates, phones, IDs), and per-field readback
+   `{key, sent, readback, ok}`.
+3. **Test it on the live page** — read-only `scan()` first, then writes that restore current
+   values, then unsaved test values you clear afterwards. Never trigger saves while testing.
+4. **Ship it as a repo skill**: `<bot repo>/.agents/skills/<system>/SKILL.md` (field keys, formats,
+   option lists, save sequence) + `fill.js`. Clone with the repo id from `GET /projects/<bot project>`
+   (`default_repo_id`), push to `main`; new sandboxes link it for main sessions and instances.
+5. **Point the runbook at it**: "install fill.js with one evaluate_script; never probe the DOM or
+   write your own scripts; fill = one call; verify = scan()".
+
+6. **Prefer bash tools over page scripts for multi-step work.** A Node script that talks to Chrome's
+   debugging port (`install.mjs` injects the library, `upload.mjs` attaches a file and waits for the
+   portal's answer) is one tool call with no model round trips in between, and doesn't cost the
+   model re-typing a 4k-token file (~20 s). File uploads: `DOM.setFileInputFiles` on the page's
+   `<input type=file>` behaves like the file picker — but Chrome fires no `change` when the input
+   already holds a file of the same name (dispatch it yourself if nothing starts), and the file must
+   be readable by the browser's user (`retro`).
+7. **Read the app's own rules instead of guessing them.** The page's component code is loaded in
+   the tab: `Debugger.enable` + `Debugger.getScriptSource` for scripts whose URL matches the
+   component (e.g. `modules/c/brokerDocumentUpload.js`) gives the exact validation (size/type
+   limits, required roles, "all documents" checks) and every error message. Turn those into the
+   skill's troubleshooting table (message → cause → fix) so the bot never has to experiment.
+
+Result on the broker bot: login + fill + verify 287 s → 124 s, no failed scripts, correct bank
+picklist. Lightning/LWC specifics that bit: inputs sit in nested shadow roots; options are
+shadow-rooted with empty outer text; record-id picklists return ids as `.value` (compare labels);
+set values with the native value setter + `input`/`change` events (composed); dependent fields
+(re)appear after a picklist change — pick those first and wait ~800 ms.
+
 ## Form filling (from the broker bot)
 
 1. **Probe, then batch.** Spend ≤2 read-only calls on counts plus one sample element (label,
@@ -88,14 +128,16 @@ baseline prompt without them.
 
 - **Ask once.** List every required document and data point in ONE message, then track
   HAVE/MISSING.
+- **Plain words for customers**: "send them here in the chat" — never "sandbox", "workspace" or
+  folder names.
 - **Validate on arrival:**
   - expiry after today
   - licence legal name = agency name
   - ID name = person
-  - IBAN format
+  - IBAN format (UAE: `AE` + 21 digits)
   - login email = contact email
 - **Unknown means ask, never guess.** If the customer authorises a placeholder, flag it everywhere.
-- **Where files arrive:** gateway attachments or `botctl put` land in `~/work/incoming/`. Tell
+- **Where files arrive:** gateway attachments or `helix session put` land in `~/work/incoming/`. Tell
   the bot to check there first. Filestore and artifact links do not work from instances.
 
 ## Human-in-the-loop steps (OTP, approvals)

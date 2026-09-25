@@ -1,6 +1,7 @@
 # Bot API reference
 
-Everything the scripts call, for when you need raw `helix api` / curl. Paths are under
+Everything the `helix org`/`helix session` commands call, for when you need raw `helix api` /
+curl (older CLI binaries, or other languages). Paths are under
 `$HELIX_URL/api/v1`. `{org}` accepts the org slug or `org_…` id on `/orgs/{org}/…` routes;
 `/organizations/{id}/…` routes want the id. ✓ = verified live against a PR #3293 stack.
 
@@ -145,6 +146,7 @@ sessions there is also `helix spectask exec|screenshot <ses_id>`.
 
 - `POST /api_keys {"name", "type":"app", "app_id":"<legacy_app_id>"}` ✓ → the key as a bare JSON
   **string**. `GET /api_keys?types=app&app_id=…` ✓, `DELETE /api_keys?key=…` ✓.
+- CLI: `helix org bots appkey <bot> create|list|delete`, `helix session send - "…" --key <key>`.
 - An app key may call only `/v1/chat/completions` and `/api/v1/sessions/chat`; anything else is
   403 "path not allowed for app API keys" ✓.
 - It may chat in any session of its own app, **including other customers' instances** ✓. Keep it

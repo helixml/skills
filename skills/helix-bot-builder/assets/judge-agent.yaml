@@ -1,8 +1,8 @@
-# Neutral LLM for bot_eval.py (judge + simulated customer).
+# Neutral LLM for `helix org eval` (judge + simulated customer).
 # Calls go through Helix's /v1/chat/completions?app_id=<this app>, which bills the
 # org and applies THIS prompt — never point the judge at the bot's own app.
 #   helix apply -f judge-agent.yaml -o <org>      → app id: helix agent list -o <org>
-#   export BOT_EVAL_JUDGE_APP=app_… BOT_EVAL_JUDGE_MODEL=<model>
+#   export HELIX_EVAL_JUDGE_APP=app_… HELIX_EVAL_JUDGE_MODEL=<model>
 name: bot-eval-judge
 description: Neutral grader and customer simulator for helix-bot-builder evals
 assistants:

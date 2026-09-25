@@ -1,26 +1,28 @@
 # Evaluating bots
 
-`scripts/bot_eval.py` runs a JSON suite against one or more bots. Each case gets its own fresh
-instance, so every run tests the current prompt and cases can't leak state into each other.
-Turns go through `POST /sessions/chat`. Grading uses the bot's **final text entry**, which is
-what the customer sees, plus the tool calls recorded for that turn.
+`helix org eval run` runs a suite (YAML or JSON) against one or more bots. Each case gets its own
+fresh instance, so every run tests the current prompt and cases can't leak state into each other.
+Turns go through `POST /sessions/chat`. Grading uses the bot's **final message** (text after the
+turn's last tool call), which is what the customer sees, plus the tool calls of that turn.
 
 ```bash
 export HELIX_URL=… HELIX_API_KEY=… HELIX_ORG=…
-export BOT_EVAL_JUDGE_APP=app_… BOT_EVAL_JUDGE_MODEL=glm-5.3-flash   # only for judge/simulate
-$S/bot_eval.py run suite.json                        # bot from the suite
-$S/bot_eval.py run suite.json --bot sup-a,sup-b      # same suite over several bots (variants)
-$S/bot_eval.py run suite.json --only crm-owner --keep-failed --tag try3
-$S/bot_eval.py run suite.json --repeat 3             # measure variance before trusting a speedup
-$S/bot_eval.py run suite.json --shared               # one warm instance per bot, /clear between cases
-$S/bot_eval.py report runs/try3.jsonl --cases
-$S/bot_eval.py compare runs/try2.jsonl runs/try3.jsonl   # FIXED / REGRESSED per case, time, tools
+export HELIX_EVAL_JUDGE_APP=app_… HELIX_EVAL_JUDGE_MODEL=glm-5.3-flash   # only for judge/simulate
+helix org eval run suite.yaml                       # bot from the suite
+helix org eval run suite.yaml --bot sup-a,sup-b     # same suite over several bots (variants)
+helix org eval run suite.yaml --only crm-owner --keep-failed --tag try3
+helix org eval run suite.yaml --repeat 3            # measure variance before trusting a speedup
+helix org eval run questions.json --bot sup-a       # the helix repo's browser-support questions, unchanged
+helix org eval report runs/try3.jsonl --cases
+helix org eval compare runs/try2.jsonl runs/try3.jsonl   # FIXED / REGRESSED per case, time, tools
 ```
 
 Output: one JSON line per case in `runs/<tag>.jsonl`. Each line holds the tag, bot, case, pass,
 seconds and session. Each turn records `user`, `reply`, `seconds`, `tool_calls`,
-`tools{name:count}`, `checks{…}` and `judge_reason`. With `--keep-failed`, failed cases keep
-their instance, and the printed session id works directly with `botctl turns <sid>`.
+`tools{name:count}`, `checks{…}`, `failed` (which pattern missed) and `judge_reason`. With
+`--keep-failed`, failed cases keep their instance, and the printed session id works directly with
+`helix session turns <sid>`. A sandbox that fails to start fails the case in seconds with its
+status (not after the 5-minute readiness timeout).
 
 ## Suite format
 
@@ -59,7 +61,7 @@ their instance, and the printed session id works directly with `botctl turns <si
 
 **Case fields**
 - `question` + `must`: the single-turn short form. It is compatible with the helix repo's
-  `evals/browser-support/questions*.json`, so those files run unchanged.
+  `evals/browser-support/questions*.json` (a bare JSON array of cases also works as a suite).
 - `turns`: the conversation, sent in order.
   - Each turn has `user` and optional `attach` (paths relative to the suite).
   - Attachments go inline as data URLs, the way a gateway customer sends them.
@@ -83,8 +85,9 @@ their instance, and the printed session id works directly with `botctl turns <si
 
 ## Judge and simulated customer
 
-Both call an OpenAI-compatible endpoint. The default is Helix itself:
-`POST /v1/chat/completions?app_id=$BOT_EVAL_JUDGE_APP`.
+Both call Helix's OpenAI-compatible endpoint:
+`POST /v1/chat/completions?app_id=<judge app>` (`--judge-app` / suite `judge.app` /
+`$HELIX_EVAL_JUDGE_APP`, model via `--judge-model` / `judge.model` / `$HELIX_EVAL_JUDGE_MODEL`).
 
 1. Create the neutral judge app once per org:
    ```bash
@@ -92,12 +95,19 @@ Both call an OpenAI-compatible endpoint. The default is Helix itself:
    helix apply -f assets/judge-agent.yaml -o <org>
    helix agent list -o <org> | grep bot-eval-judge     # → app_…
    ```
+   The judge instructions go in the user message, because the app's own system prompt replaces
+   any system message in the request. The app also **pins the model**: `--judge-model` is ignored
+   when the app has one, so to change the judge model create a new judge app (and delete the old
+   one — `helix apply` of agent YAML with the same name created a second app on 2026-09-25).
+   The model must be on the provider's allow-list (`helix provider list`).
 2. Never use the bot's own app. Its system prompt replaces the judge's instructions, and the
    judge then grades as if it were the bot.
 3. Prefer a judge model that differs from the bot's model, and keep rubrics binary and specific:
-   "names X and does not reveal Y" rather than "is helpful".
-4. For a non-Helix judge, set `BOT_EVAL_JUDGE_URL` (base URL ending in `/v1`),
-   `BOT_EVAL_JUDGE_KEY` and `BOT_EVAL_JUDGE_MODEL`.
+   "names X and does not reveal Y" rather than "is helpful". Say what **fails** ("fails if it offers
+   to proceed with the expired licence") and what is allowed ("the portal's role names are fine");
+   vague rubrics ("plain language", "offers help meanwhile") produced most of the false failures in
+   the broker suite. A small judge (`qwen3.8-flash-next`) misread correct refusals; `glm-5.3-flash`
+   was reliable.
 
 Deterministic checks are the backbone of a suite. Add a judge only for behaviour that
 substrings can't express: tone, "asked in ONE message", "didn't invent values". LLM judges are
@@ -131,8 +141,7 @@ Aim for 10–20 cases per bot, and add a case every time you fix a production fa
 - **Noise**: replicate runs of the same config vary about 0.75–1.6× in time and 0.8–1.5× in
   tokens. Compare totals over ≥10 cases and use `--repeat` before claiming a speedup. Accuracy
   flips on a single case can also be noise when a judge is involved.
-- A first turn includes the cold start. For warm latency, use `--shared` (it mirrors a warm pool)
-  or look at later turns.
+- A first turn includes the cold start (~6–10 s). For warm latency, look at later turns.
 - A failed case with `error` set is a platform problem: chat timeout, sandbox never started,
   400 or 403. Check `references/troubleshooting.md` before touching the prompt.
 
@@ -172,4 +181,4 @@ Mock CRM, billing and helpdesk systems plus a public shop; 12 questions; self-ho
 
 The helix repo's `evals/browser-support/` harness (`mock_systems.py`, `run_eval.py`,
 `compare.py`) is the heavier, DB-level version. It needs docker access to the Helix host, and
-it adds per-bot traffic logs and LLM token accounting. `bot_eval.py` needs only the API.
+it adds per-bot traffic logs and LLM token accounting. `helix org eval` needs only the API.
