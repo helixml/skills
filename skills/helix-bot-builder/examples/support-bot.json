@@ -1,0 +1,18 @@
+{
+  "id": "support-acme",
+  "name": "Acme support",
+  "content_file": "support-bot.prompt.md",
+  "code_agent_runtime": "opencode",
+  "code_agent_credential_type": "api_key",
+  "provider": "pe_REPLACE_WITH_PROVIDER_ID",
+  "model": "glm-5.3-flash",
+  "reasoning_effort": "none",
+  "sandbox_runtime": "headless-ubuntu",
+  "preserve_context": false,
+  "instance_profile": {
+    "sandbox_runtime": "headless-ubuntu",
+    "mcp_servers": ["chrome-devtools"],
+    "tools": [],
+    "helix_skills": false
+  }
+}

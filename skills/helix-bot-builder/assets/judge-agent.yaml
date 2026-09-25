@@ -1,0 +1,14 @@
+# Neutral LLM for bot_eval.py (judge + simulated customer).
+# Calls go through Helix's /v1/chat/completions?app_id=<this app>, which bills the
+# org and applies THIS prompt — never point the judge at the bot's own app.
+#   helix apply -f judge-agent.yaml -o <org>      → app id: helix agent list -o <org>
+#   export BOT_EVAL_JUDGE_APP=app_… BOT_EVAL_JUDGE_MODEL=<model>
+name: bot-eval-judge
+description: Neutral grader and customer simulator for helix-bot-builder evals
+assistants:
+  - name: judge
+    provider: pe_REPLACE_ME        # helix provider list → a provider endpoint id
+    model: REPLACE_ME              # e.g. glm-5.3-flash; pick something other than the bot's model if you can
+    system_prompt: |
+      You are an evaluation harness. Follow the instructions in each request exactly
+      and reply in the format it asks for. You are not a customer-support agent.
