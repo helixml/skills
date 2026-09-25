@@ -82,7 +82,7 @@ linked skills, browser processes, last turn). Then narrow down with the workflow
 
 - Per turn: `helix session turns` gives the wall time and tool count.
 - Tokens, cost, latency and cache hits per turn and per call: `helix session usage <sid>` (`--calls`
-  for every LLM call), or the session's **Usage** tab in the UI (`GET /api/v1/sessions/<sid>/usage`).
+  for every LLM call).
 - Startup: a headless instance calls the model ~2.7 s after the first message; a desktop one ~17 s
   (it waits for the Zed window). Headless Chrome works for full flows; set a normal user agent
   (`chrome-devtools_emulate`) — it reports `HeadlessChrome` otherwise.
