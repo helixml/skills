@@ -41,6 +41,7 @@ Or copy the directories you want out of `skills/` into your agent's skills direc
 | [helix-files](skills/helix-files/SKILL.md) | Getting files into Helix: filestore uploads, knowledge/RAG indexing and search, spec-task attachments, files in and out of containers. |
 | [helix-artifacts](skills/helix-artifacts/SKILL.md) | Build and publish project-scoped static pages, compiled SPAs, PDFs, and images, then update, verify, list, or delete them. |
 | [helix-agents](skills/helix-agents/SKILL.md) | Agent YAML (system prompts, OpenAPI tools, MCP servers, tests), chatting with agents, models and provider endpoints. |
+| [helix-bot-builder](skills/helix-bot-builder/SKILL.md) | helix-org bots end to end: prompts that work as runbooks, harness/model choice, bot instances and the app-key gateway for customer-facing support bots, tested page libraries as repo skills, troubleshooting, and graded eval suites (`helix org bots`, `helix org instances`, `helix org eval`, `helix session`). |
 | [helix-deploy](skills/helix-deploy/SKILL.md) | Install and debug: control plane on Compose or Helm, the **Hydra sandbox runner** that actually runs agent desktops, runtime config, health checks, logs, troubleshooting. |
 | [helix-e2e](skills/helix-e2e/SKILL.md) | Prove a deployment works end to end: org → project → agent → task → chat → approve → PR → cleanup. |
 
