@@ -48,6 +48,12 @@ helix secret delete -n GITHUB_TOKEN
 
 A project-scoped secret is injected as an environment variable into that project's sessions,
 which is how an agent gets a `GITHUB_TOKEN` without it landing in a prompt or the repo.
+
+Two things to know: `helix secret list` shows **names only — values are write-only** and cannot
+be read back through the CLI/API (by design). And a project-scoped secret is injected only into
+**project spec-task sessions**; an external CLI session on your laptop won't see the value, so
+for durable state a future session must resume from, store the secret *name* (not the value) in
+your notes and let the resuming spec task pick it up from the environment.
 Injection happens once, when a container is created — adding a secret to a project does not
 reach sessions that are already running, so start a new one.
 

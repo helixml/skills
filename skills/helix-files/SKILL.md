@@ -104,6 +104,44 @@ repo by the agent, uploaded to the filestore, or read back out before the sandbo
 - A **running container** needs it on disk now → `copy` / `sandbox write`.
 - You just need it **stored** somewhere Helix can reach → filestore.
 
+## Artifacts and reading files back (gotchas from practice)
+
+Two things that aren't obvious and cost real time:
+
+**Reading a file back out of the filestore.** There is no `helix filesystem download`/`cat`.
+Files are served over HTTP: resolve the physical path, then GET the viewer URL with your key.
+
+```bash
+# GET /api/v1/filestore/get?path=<your relative path> returns metadata incl. .path
+META=$(curl -s -H "Authorization: Bearer $HELIX_API_KEY" \
+  "$HELIX_URL/api/v1/filestore/get?path=engagements/prj_01x/notes.md")
+P=$(echo "$META" | jq -r '.path')            # e.g. dev/users/usr_.../engagements/prj_01x/notes.md
+curl -s -H "Authorization: Bearer $HELIX_API_KEY" "$HELIX_URL/api/v1/filestore/viewer/$P"
+```
+
+Use this (not artifacts) for machine-readable state you write with `helix upload` and read back
+in a later session.
+
+**Artifacts** (`helix artifact create|list|update|get|delete`) publish a static page/doc into a
+project (visible in the UI, optionally shared via a public subdomain):
+
+```bash
+helix artifact create ./report.html -n "Report" --project prj_01x \
+  --entrypoint report.html --visibility project   # or --visibility public
+helix artifact create ./report.pdf  -n "Report PDF" --project prj_01x
+helix artifact update art_01x ./report.html --entrypoint report.html   # new version, stable URL
+```
+
+- **Single-file kinds:** HTML (`single_file`), PDF (`pdf`), an image (`image`), or **Markdown**
+  (`.md` → kind `markdown`, rendered natively by the viewer). A directory uploads as a multi-file
+  `spa` (needs `--entrypoint`). Other single files are rejected. Markdown is ideal for living
+  docs like notebooks/READMEs — publish the `.md` directly, no HTML conversion.
+- **Artifact content is NOT readable back via the API** — `GET /artifacts/<id>` returns metadata,
+  and the content URL serves the viewer app, not the raw file. If you need the bytes back later,
+  keep them in the filestore too.
+- **Provenance** auto-fills from `HELIX_SESSION_ID` / `HELIX_SPEC_TASK_ID` when created inside a
+  spec task, linking the artifact to the task that produced it.
+
 ## Troubleshooting
 
 | Symptom | Cause |

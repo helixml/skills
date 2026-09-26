@@ -77,6 +77,21 @@ Note the argument order: session **first**, then the local file.
 
 `--timeout` on `exec` defaults to 30 seconds.
 
+**Browse and download the workspace** — the CLI equivalent of the web UI's Files panel. `files`
+lists the workspace (the cloned repo + anything the agent wrote); `download` pulls a file out
+(the inverse of `copy`), binary-safe, so a driving session can collect a sub-agent's output:
+
+```bash
+helix spectask files ses_01xxx                          # list the primary workspace
+helix spectask files ses_01xxx --workspace keel --json  # a named repo, as JSON
+helix spectask download ses_01xxx engagement/findings.json          # → ./findings.json
+helix spectask download ses_01xxx out/report.pdf -o ./report.pdf    # choose the path
+helix spectask download ses_01xxx notes.md -o -                     # stream to stdout
+```
+
+Unlike `exec cat` (text only, allowlisted), `download` handles binaries (PDFs, images) and
+honors the same auth/workspace the UI browser uses.
+
 ## Stop and resume
 
 ```bash
